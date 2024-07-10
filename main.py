@@ -38,18 +38,34 @@ def home():
     return render_template("index.html")
 
 
-@app.route('/register')
+@app.route('/register', methods=["POST", "GET"])
 def register():
-    return render_template("register.html")
+    
+    if request.method == "POST":
+        input_pwd = request.form.get('password')
+        hashed_pwd = generate_password_hash(input_pwd,method='pbkdf2:sha256',salt_length=8)
+        new_user = User(
+            email = request.form.get('email'),
+            password = hashed_pwd,
+            name = request.form.get('name')
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        
+        return redirect(url_for("secrets"))
+    else:
+        return render_template("register.html")
 
 
 @app.route('/login')
 def login():
-    return render_template("login.html")
+    
+        return render_template("login.html")
 
 
 @app.route('/secrets')
 def secrets():
+    user = db
     return render_template("secrets.html")
 
 
@@ -60,7 +76,12 @@ def logout():
 
 @app.route('/download')
 def download():
-    pass
+    print('tried downloading')
+    return send_from_directory(
+        'static',
+        'files/cheat_sheet.pdf',
+        as_attachment = True,
+    )
 
 
 if __name__ == "__main__":
