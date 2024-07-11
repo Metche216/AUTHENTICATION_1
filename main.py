@@ -54,6 +54,10 @@ def register():
         #retrieve and hash PW
         input_pwd = request.form.get('password')
         hashed_pwd = generate_password_hash(input_pwd,method='pbkdf2:sha256',salt_length=8)
+        db_email = request.form.get('email')
+        if User.query.filter_by(email=db_email):
+            flash("This email has already been registered. Log in instead.")
+            return redirect(url_for("login"))
         #create new user and store
         new_user = User(
             email = request.form.get('email'),
@@ -74,13 +78,20 @@ def register():
 @app.route('/login', methods= ["POST","GET"])
 def login():
     if request.method == "POST":
-        try:
-            user = User.query.filter_by(email=request.form.get('email')).scalar()
-        except:
-            flash('This email is not registered. Please try again.')
+        
+        user = User.query.filter_by(email=request.form.get('email')).scalar()
+        if not user:
+            flash('This email is not registered. Please try again')
+            return redirect(url_for("login"))
+        
         if check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for("secrets")) 
+        
+        else:
+            flash('Invalid password, please try again.')
+            return redirect(url_for("login"))
+            
         
     else:
         return render_template("login.html")

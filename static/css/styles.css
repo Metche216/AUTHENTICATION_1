@@ -26,6 +26,11 @@ body {
 	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#3E1D6D', endColorstr='#092756',GradientType=1 );
 }
 
+ul {
+	list-style-type: none;
+	padding-left: 0px;
+  }
+  
 a {
     text-decoration: none;
     text-align: center;
