@@ -8,6 +8,15 @@ from flask_login import UserMixin, login_user, LoginManager, login_required, cur
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret-key-goes-here'
 
+#LOGIN CONFIG
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+@login_manager.user_loader
+def load_user(user_id):
+    return db.get_or_404(User, user_id)
+
+
 # CREATE DATABASE
 
 
@@ -22,7 +31,7 @@ db.init_app(app)
 # CREATE TABLE IN DB
 
 
-class User(db.Model):
+class User(db.Model,UserMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String(100), unique=True)
     password: Mapped[str] = mapped_column(String(100))
@@ -42,8 +51,10 @@ def home():
 def register():
     
     if request.method == "POST":
+        #retrieve and hash PW
         input_pwd = request.form.get('password')
         hashed_pwd = generate_password_hash(input_pwd,method='pbkdf2:sha256',salt_length=8)
+        #create new user and store
         new_user = User(
             email = request.form.get('email'),
             password = hashed_pwd,
@@ -52,18 +63,31 @@ def register():
         db.session.add(new_user)
         db.session.commit()
         
+        #logs in user
+        login_user(new_user)
+        
         return redirect(url_for("secrets"))
     else:
         return render_template("register.html")
 
 
-@app.route('/login')
+@app.route('/login', methods= ["POST","GET"])
 def login():
-    
+    if request.method == "POST":
+        try:
+            user = User.query.filter_by(email=request.form.get('email')).scalar()
+        except:
+            flash('This email is not registered. Please try again.')
+        if check_password_hash(user.password, request.form.get('password')):
+            login_user(user)
+            return redirect(url_for("secrets")) 
+        
+    else:
         return render_template("login.html")
 
 
 @app.route('/secrets')
+@login_required
 def secrets():
     user = db
     return render_template("secrets.html")
@@ -71,10 +95,13 @@ def secrets():
 
 @app.route('/logout')
 def logout():
-    pass
+    logout_user()
+    flash('You have been logged out.')
+    return redirect(url_for('home'))
 
 
 @app.route('/download')
+@login_required
 def download():
     print('tried downloading')
     return send_from_directory(
